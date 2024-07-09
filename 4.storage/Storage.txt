@@ -1,0 +1,110 @@
+Storage drivers -: provides a pluggable framework for managing the temporary internal storage of a container writable layer. sometime knowns as graph drivers. The proper storage driver depends on you operating system and other local configuration factors.
+--- docker info  -: shows you your storage driver
+
+docker automatically selects a default storage driver that is compatible with your environment. but there are two ways to override the default
+ 1. set the --storage-driver flag when starting docker (not a recommended way)
+ 2. set the "storage-driver" value in /etc/docker/daemon.json. By default the file doesn't exist
+
+overlay2 -: current ubuntu and centos/RHEL versions. Its File based storage
+aufs: ubuntu 14.04 and older
+devicemapper: centos 7 and earlier. Its block storage more efficient for doing lots of writes
+
+Storage models -: persistent data can be manged using several storage models. Filesystem, block, Object
+
+Filesystem storage -: Data is stored in the form of a file system, used by overlay2 and aufs, efficient use of memory, inefficient with write-heavy workloads.
+
+Block storage -: store data in blocks, used by device mapper, efficient with write-heavy workload. usually needs an additional storage device that is configured for storage device. so it uses loop-lvm to simulate that.
+
+object storage -: store object in external object-based store, Application must be designed to use object-based storage, flexible and scalable. you use like restful API to communicate with the external object based storage
+
+--- docker inspect   -: here you can find both the container and image layer data on disk. it is mostly located in the /var/lib/docker/overlay2(your storage type. it can be devicemapper)/..
+
+Configuring DeviceMapper
+it is one of the docker storage drivers available for some Linux distributions. default for centOS7 and earlier.
+- it can be customized using the daemon config file.
+it have two modes loop-lvm mode and direct-lvm mode
+
+loop-lvm mode -: simulates and additional physical disk using files on the local disk. it have minimal setup and doesn't require and additional storage device. it have bad performance and should be used for testing.
+
+direct-lvm mode -: store data on separate device. it requires and additional storage device. it have a good performance and used for production.
+
+Bind Mounts vs Volumes
+- when mounting and external storage to a container you can use bind mounts or a volume
+
+Bind Mounts -: mount specific path on the host machine to the container, Not portable depends on the host machines file system and directory structure. Useful for sharing specific configuration files or data between the host and the container.
+
+Volumes -: stores data on the host file system, but the storage location is managed by docker. it is more portable and can mount the same volume to multiple container. it works on more scenarios.
+
+working with volumes.
+the --mount and -v can be used to do the same thing. there only difference is there syntax -v are a verbose and difficult to read at first glans
+it doesn't copy from the source to the destination it creates a link so they can be accessed
+--mount syntax
+mkdir message
+echo Hello, world! > message/message.txt
+
+--- docker run --mount type=bind,source=/home/cloud_user/message,destination=/root,readonly busybox cat /root/message.txt
+
+-- the type can be inferred if not given for example if we start the source with a / then it knows it is a path so the type become bind. if we just give the source a name then it is a volume since the location is going to be managed by docker
+
+--- docker run --mount type=volume,source=my-volume,destination=/root busybox xh-c 'echo hello > /root/message.txt && cat /root/message.txt'
+
+-v syntax
+--- docker run -v /home/cloud_user/message:/root:ro busybox cat /root/message.txt
+--- docker run -v my-volume:/root:ro busybox cat /root/message.txt
+
+we cannot use the -v on services and only the --mount
+
+
+--- docker volume ls
+--- docker volume inspect VOLUME_NAME
+--- docker volume rm VOLUME_NAME
+--- docker volume create VOLUME_NAME
+
+Image clean up
+--- docker system df  -: get disk usage info
+--- docker system df -v -: get even more detailed info
+--- docker image prune -: remove image that are dangling. i.e. images that are not tagged
+--- docker image prune -a -: remove all unused image
+
+
+Storage in a Cluster
+When working with multiple Docker machine such as a swarm cluster, you may need to share docker volume storage between those machines. some options are using
+ application logic to store data in external object storage that is using API and so on.
+ volume driver to create a volume that is external to any specific machine in your cluster. i.e using another server that is storing the data
+
+--- docker plugin install --grant-all-permissions Vieux/sshfs -: on all the nodes worker and manager
+
+ other server where the data is going to be stored with only ubuntu server
+ -- mkdir /home/cloud_user/external
+ -- cd external
+ -- echo External Storage! > /home/cloud_user/external/message.txt
+
+ in the manager node
+ --- docker volume create --driver Vieux/sshfs -o sshcmd=cloud_user@privateIpOfTheStrorageServer:/home/cloud_user/external -o password=password sshvolume
+
+- now we create a service on the manager for all the nodes. but we can't simple use --mount because if the volume sshvolume isn't present on the worker node it will create it without the flags that are used to create on the manager node. so we have to do it in a little bit different way
+
+--- docker service create --replicas=3 --name storage-service --mount volume-driver=vieus/sshfs,source=cluster-volume,destination=/app,volume-opt=sshcmd=cloud_user@privateipstorageserver:/home/cloud_user/external,volume-opt=password=yoseph1977
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

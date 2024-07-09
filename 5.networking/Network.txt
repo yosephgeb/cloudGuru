@@ -1,0 +1,185 @@
+--net vs --driver
+--net is used to define the network to be used when running a container if not specified then --net bridge is the default.
+--driver is used when creating a network with the command docker network create --driver bridge --name mynet. the default is bridge hear too.
+
+Docker use an architecture called the container networking model(CNM) to manage networking for docker container.
+The CNM utilizes the following concepts
+1.Sandbox -: an isolated unit containing all network components associated with a single container. usually a Linux network namespace.
+2.Endpoint -: connect a sandbox to a network. Sandbox can have multiple endpoint but only one endpoint for each network it is connected.
+3. network-: a collection of endpoint connected to one another.
+4. Network driver -: Handles the actual implementation of the CNM concepts.
+5. IPAM(IP address management) driver -: automatically allocates subnets and IP addresses for network endpoints
+
+Network drivers -: docker have several built in network drivers known as Native Network Drivers and they implements the CMN.
+The native network drivers are ipvlan, Host, Bridge, Overlay, MACVLAN, none.
+
+docker run --net=DRIVER
+
+ipvlan: IPvlan networks give users total control over both IPv4 and IPv6 addressing. The VLAN driver builds on top of that in giving operators complete control of layer 2 VLAN tagging and even IPvlan L3 routing for users interested in underlay network integration. 
+
+Host network driver -: allow the container to use the host's network stack directly. There is no sandbox and all containers share the host driver and share the same network namespace. no two containers can have the same ports. it can be used on simple and easy setup.
+eth0 is the namespace. it doesn't provide isolation between containers.
+-- docker run -d --net host --name host-busybox radial/busyboxplus:curl sleep 3600
+-- docker run -d --net host --name host_nginx nginx
+-- curl lochalhost:80
+you will get a response because there is no isolation with the container since --net is host. other wise you need the exec or you have to use -p when starting the container
+
+Bridge network driver-:  it uses Linux networks bridge networks to provide connectivity between containers on the same host.
+- it is the default driver for containers running on the same host. i.e. not in a swarm
+- create a Linux bridge for each docker network.
+- creates a default Linux bridge network called bridge0. containers connect automatically to this if no other network is specified
+use cases -: isolated networking among containers on a single host.
+-- ip link -: shows all our network interface
+-- docker network create --driver bridge my-bridge-net
+-- docker run -d --name bridge-network --network my-bridge-net nginx
+-- docker run --rm --name bridge-busybox --network my-bridge-net radial/busyboxplus:curl curl bridge-nginx:80
+
+Since they are in the same network we can use there name to connect with one another
+
+Overlay network -: provides connectivity between containers across multiple docker host. i.e. docker swarm
+- uses a VXLAN data plane, which allows the underlying network infrastructure in a way that is transparent to the containers themselves.
+- automatically configures network interfaces, bridges, etc. on hosts a needed
+use case _: networking between container in swarm
+
+-- docker network create --driver overlay my-overlay-net
+-- docker service create --name overlay-nginx --network my-overlay-net nginx
+-- docker service create --name overlay-busybox --network my-overlay-net radial/busyboxplus:curl sh -c 'curl overlay-nginx:80 && sleep 3600'
+
+
+MACVLAN -: offers a more lightweight implementation by connecting container interface with host interface.
+- use direct association with Linux interfaces instead of bridge interface
+- hard to configure and greater dependency between macvlan and the external network
+- more lightweight and less latency
+use cases: when there is a need for extremely low latency or for a need for container with ip address in the external subnet.
+
+-- docker network create --driver macvlan --subnet 'subnet' --gateway 'gate way' -o parent=eth0 my-macvlan-net
+
+None network driver -: it doesn't provide any networking implementation.
+- container is completely isolated from other containers and the host.
+- you must set up all the networking manually
+- it does create a namespace for each container but no interface or endpoints
+usecase -: when there is no need for networking
+
+--commands
+
+docker network create my-net
+docker run -d --name my-net-busybox --network my-net radial/busyboxplus:curl sleep 3600
+docker run -d -name my-net-nginx nginx -: not connected to the my-net network
+docker network connect my-net my-net-nginx -: connect to the network ny-net
+docker exec my-net-busybox curl my-net-nginx:80
+
+Embedded DNS -: allows containers and services to communicate with one another. they can use name or network alias.
+-- docker run -d --name my-net-nginx2 --network my-net --network-alias my-nginx-alias nginx
+-- docker network ls
+-- docker network inspect my-net
+-- docker network disconnect my-net my-net-nginx
+-- docker network rm NETWORK -: you have to either disconnect or delete the containers that are using it first
+
+Overlay networks -: connect containers on different host. by default services are attached to a default overlay network called ingress.
+--- docker network create --driver overlay NETWORK
+--- docker service create --network NETWORK
+--- docker network create --driver overlay --attachable network-name -: it allows individual container to be attached to it
+--- docker service create --name service-name --network network-name-to-be-attached-to --replicas 3 nginx
+
+Exposing containers externally -: use the -p flag that is publish
+--- docker port container-name -: show the ports of a container
+---- docker ps -: it have the column with port 
+
+Host vs ingress
+- docker swarm supports two models for publishing ports for service
+ingress
+- the default that is used if non is specified
+- uses a routing mesh. the published port listens on every nodes in the cluster and transparently directs incoming traffic to any task that is part of the service on any node
+--- docker service create -p 8081:80 -name nginx-ingress-hub nginx
+--- curl localhost:8081
+
+host
+- publish the port directly on the host when a task in running i.e. if you run the command and it will be runed on that host and no other node in the swarm will not be able to connect to it
+- cannot have a replicas on the same node if you use a static port
+- traffic to the published port on the node goes directly to the task running on that specific node
+
+--- docker service create -p mode=host,published=8082,target=80 --name nginx-host-pub nginx
+
+Global services goes well with host mode publishing since a single task will be run on each node
+
+Network troubleshooting
+-- docker logs CONTAINER
+-- docker service logs service
+-- journalctl -u docker -: get docker daemon logs
+
+A great way to troubleshoot network issues is to ran a container withing the context of a docker network. you can use it to test connectivity and gather information.
+Netshoot is an image that comes with a variety of network troubleshooting tools
+you can run netshoot by using the container image nicolaka/netshoot
+- it can even be runed within networking namespace of an existing network.
+
+-- docker network create custom-net
+-- docker run -d --name custom-net-nginx --network custom-net nginx
+-- docker run --rm --network custom-net nicolaka/netshot curl custom-net:80
+
+-- docker run --rm --network container:custom-net-nginx nicolka/nethoot curl localhost:80
+-- this is inserted inside the sandbox of the container
+
+External DNS
+-- you may need to customize the external DNS server(S) used by the containers and you can change the default for the host with the dns setting in daemon.json
+"dns": ["8,8,8,8"]
+
+docker run --dns DNS_ADDRESS -: run a container with a custom external DNS
+
+sudo vi /etc/docker/daemon.json
+{"dns": ["8,8,8,8"]}
+docker run nicolaka/netshoot nslookup google.com
+docker run --dns 8,8,4,4 nicolaka/netshoot nslookup google.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

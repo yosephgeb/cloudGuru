@@ -1,0 +1,103 @@
+Docker Community Edition(DCE)
+- All docker engine updates, Docker swarm, Orchestration, networking, security
+
+Selecting a Storage Driver
+- it provides a pluggable framework for managing temporary internal storage of a containers writeable layer.
+- There are multiple variety of a storage drivers supported by docker and the best storage depends on your environment.
+-- overlay2: file based storage. default for ubuntu and centos0S 8+ and ubuntu
+-- device mapper: Block storage. Efficient for doing lots of writes. Default for CentOS 7 and earlier.
+
+--- docker info -: shows all about the configuration
+
+overriding the default storage driver
+1. set the --storage-driver flag when starting Docker(in your system unit file for example)
+-- sudo vi /usr/lib/system/system/docker.service -: hear you add device-mapper manually.
+- restart the daemon and docker
+
+2. set the "storage-driver" in /etc/docker/daemon.json
+
+updating Docker Engine
+-- install a newer package version. since we install docker using the package repository
+-- we don't need to stop the docker engine
+--- sudo apt-get install -y docker-ce=VERSION docker-ce-cli=version
+
+--- docker version  -: check the version
+
+downgrading docker engine 
+- Stop the docker engine, remove the docker-ce and docker-ce-cli and then reinstall with the version you want.
+--- sudo systemctl stop docker
+--- sudo apt-get remove -y docker-ce docker-ce-cli
+--- sudo apt-get update
+--- sudo apt-get install -y docker-ce=18.09.4 docker-ce-cli=18.09.04
+
+--- docker version  -: check the version
+
+Configuring logging drivers
+- Logging drivers are a pluggable framework for accessing log data from services and containers in docker. docker supports a variety of logging driver.
+ 1. setting log-driver and log-opts in /etc/docker/daemon.json
+ -- it is in JSON-file format {log-driver: json-file, log-opts: {max-size: 15m}}
+ -- restart the docker
+ 2. override the default logging driver for a container with --log-driver and --log-opt flags when using docker run.
+--- docker run --log-driver syslog nginx
+--- docker run --log-driver json-file --log-opt max-size=50m nginx
+-- with json-file we have more option like max-size and so on
+
+Docker swarm
+-- distributed cluster of docker machines to run your container
+-- facilitates orchestration, high-availability and scaling
+--- docker swarm init --advertise-addr 	PRIVATE-IP
+--- docker info
+--- docker node ls
+--- docker swarm join-token worker
+-- copy the join command and past it on the worker nodes
+--- docker swarm join --token TOKEN
+
+Swarm backup and restore
+To back up a swarm we have to do it from the manager nodes
+1. Stop the docker service  
+--- sudo systemctl stop docker
+2. back up all data in the directory /var/lib/docker/warm.
+--- sudo tar -zvcf backup.tar.gz /var/lib/docker/warm
+3. start the docker service
+--- sudo systemctl start docker
+
+To restore a previous backup
+1. stop the docker service
+--- sudo systemctl stop docker
+2. Delete any existing files or directories under /var/lib/docker/swarm
+--- sudo rm -rf  /var/lib/docker/swarm/* (every thing inside the swarm directory and not the directory itself)
+3. copy the backed-up files to /var/lib/docker/swarm
+--- sudo tar -zxvf backup.tar.gz -C /var/lib/docker/swarm/
+4. start the docker service
+--- sudo systemctl start docker
+
+Namespaces
+- they are Linux technology that allows processes to be isolated in terms of resources that they see. They can be used to prevent different processes from interfering or interacting with one another.
+- Namespace isolates containers and allows containers to operate independently and securely.
+- docker uses namespaces such as the following to isolate resources for containers
+1. pid -: process isolation
+2. net -: network interface
+3. ipc -: inter process communication
+3. mnt -: filesystem mounts
+4. uts -: kernel and version identifiers
+5. user namespaces -: requires special configuration. Allow containers processes to run as root inside the container while mapping that user to an unprivileged user on the host
+
+Control groups(C groups)
+- : they limit the resource that a process can use while namespaces limits what the process can see
+-: they enforce rule on docker. like limiting the processor or storage it can use
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

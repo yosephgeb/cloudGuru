@@ -1,0 +1,25 @@
+Docker images
+- it is a file containing the code and components needed to run software in a container.
+- containers and images uses a layered file system. Each layer contains only the differences from the previous layer.
+- the image consist of one or more read only layers, while the container adds one additional writable layer.
+- The layered file system allows multiple images and containers to share the same layers. This results in
+  . smaller overall storage footprint . faster image transfer . faster image build.
+
+--- docker image pull IMAGE:TAG
+--- docker image history IMAGE  -: lists all the layers used to build an image
+
+Docker files
+- A set of instructions which are used to construct a docker image. The instructions are called directives.
+-- FROM -: starts a new build stage and sets the base image. Usually must be the first directive in the docker file except ARG which can be set before from.
+-- ENV -: sets the environment variables. This can be referenced in the docker file itself and are visible to containers on runtime.
+-- RUN -: creates a new layer on top of the previous layer by running command inside the new layer and committing the changes.
+-- CMD -: specify a default command used to run a container at execution time. when command isn't given on run the default command can be runed.
+
+--- docker build -t custom-nginx .
+
+-- EXPOSE -: documents which port(s) are intended to published when running a container
+-- WORDDIR -: sets the current working directory for subsequent directives such as ADD, COPY, CMD, ENTRYPOINT. it can be used multiple time in a docker file.
+-- COPY -: Copy files from the local machine to the image.
+-- ADD -: Similar to COPY, but can also pull files using a URL and extract an archive into loose files in the image.
+
+
