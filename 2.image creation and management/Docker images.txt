@@ -22,4 +22,188 @@ Docker files
 -- COPY -: Copy files from the local machine to the image.
 -- ADD -: Similar to COPY, but can also pull files using a URL and extract an archive into loose files in the image.
 
+FROM ubuntu:bionic
+ENV NGINX_VERSION 1.14.0-0ubuntu1.2
+RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y nginx=$NGINX_VERSION
+
+# since workdir sets the working directory it affects the above commands since it sets the working directory for them. so the last directory in the workdir path is where CMD is executed
+# The workdir can be relative or absolute if it is /var then it is absolute since it will go in the /var without the / it just pick the PWD and go int the name given without the /
+WORKDIR /var
+
+WORKDIRD www # it will go in /var/www
+
+WORKDIR html # it will go in /var/www/html
+
+WORKDIR /var/www/html  # in order to simplify it.
+
+COPY index.html ./ # copy the index.html file in the PWD. since the workdir is /war/www/html then we can copy it by just ./
+
+ADD URL, archive(it can be URL or archive) etc index.html ./
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off:"]
+
+STOPSIGNAL SIGTERM # Tells the kill signal that can be USED to stop your container like ctrl+c(default). it doesn't matter where you put it.
+
+# specify a command to run in order to perform a custom health check to verify that the container is working properly. The default check is if a process exit and it have an exit code of 0
+
+HEALTHCHECK CMD localhost:80
+
+Efficient docker images.
+- in the real world it is important to create a docker images that are as efficient as possible and that is as smaller as possible.
+The tips are put things that are less likely to change at the lower-level layer, don't create unnecessary layers and avoid including unnecessary files, packages etc in the image
+
+Multi-Stage Builds.
+Docker supports the ability to perform multi-stage builds. multi stage builds have multiple FROM directive in the docker file, with each FROM directive starting a new stage.
+- each stage begins a completely new set of file system layers, allowing you to selectively copy only the files that you need from previous layers
+- use --from flag with COPY to copy file from previous stage
+-- COPY --from=0
+- you can also name your stage with FROM... AS, then refence the name with COPY --from
+
+# this will clock around 750MB when built and runed
+FROM golang:1.12.4 AS compiler
+WORKDIR /helloworld
+COPY helloworld.go .
+RUN GOOS=Linux go build -a -installsuffix cgo -o helloworld .
+CMD ["./helloworld"]
+
+
+# change it to multi stage build to make it smaller
+FROM golang:1.12.4
+WORKDIR /helloworld
+COPY helloworld.go .
+RUN GOOS=Linux go build -a -installsuffix cgo -o helloworld .
+
+FROM alpine:3.9.3 # alpine is a minimul base image
+WORKDIR /root
+COPY --from=compiler /helloworld/helloworld . #(or by index then it becomes --from=0)
+CMD ["./helloworld"]
+
+--- docker image ls  -: it shows you the size and the multi stage is 7.53MB while the other is 750MB
+
+Managing images
+--- docker image pull IMAGE:Tag
+--- docker image ls(list)
+--- docker image ls -a(shows intermediate images that means when you pull image from docker hub that image may pull other images so those are itermediate images)
+--- docker image inspect IMAGE
+--- docker image inspect IMAGE --format "{{.FIELD-YOU_WANT}} {{".ANOTHER_FIELD"}}"
+--- docker image rm IMAGE
+--- docker rmi IMAGE
+--- docker image rm -f IMAGE_ID
+--- docker rmi -f IMAGE_ID (rmi is without the image short for image rm)
+-- -f doesnt necesserly delete the image when it is being used by container it just remove the tag. then it becomes a dangling image I.E without tag or repository
+--- docker image prune -: removes all images that are dangling
+
+Flattening an image
+- sometimes, images with fewer layers can perform better. in a few cases you may want to take an image with many layers and flatten them into a single layer.
+- docker does not provide an official method for doing this, but one can accomlish it by doing the following.
+ 1. Run a container from the image
+    --- docker run -d --name flat_container .(dockerfile)
+ 2. Export the container to an archive using docker export 
+    --- docker export flat_container > flat.tar
+ 3. Import the archive as a new image using docker import
+    --- cat flat.tar | docker import - flat:latest
+The resulting image will only have a single layer
+
+- we wont be saving space but it will become a single layer when checked used 
+ --- docker image history IMAGE-NAME.
+
+Docker registries
+- it is responsible for storing and distributing docker images.
+- docker hub is the default public registry
+- it is also possible to create private registries using docker open source registry or docker trusted registry(the non-free enterprise solution)
+- To create a basic registry, simple run a container using the registry image and publish port 5000
+--- docker run -d -p 5000:5000 --restart=always --name registry registr:2
+- To change individual environment variables.
+--- docker run -d -p 5000:5000 --restart=always --name registry -e REGISTRY_LOG_LEVEL=debug registr:2
+
+--- docker logs registry -: to see logs
+
+- you can override individual values in the default registry configuration by supplying environment variables with docker run -e and name the variable REGISTRY_ followed by each configuration key all upper key separated by underscore
+- for example to change the config 
+log:
+ level: info
+--- REGISTRY_LOG_LEVEL=debug
+
+Securing a Registry
+By default, the registry is completely unsecured. it does not use TLS and doesn't require authentication.
+-- Use TLS with a certificate.
+-- Require user authentication
+ 1. mkdir ~/registry, cd registry, mkdir auth
+ -- we have to run our registry inside the directory in order to generate the files associated with our registry
+ 2. docker run --entrypoint htpasswd registry:2 -Bbn testuser password > auth/htpasswed
+ - entrypoint -: override the default entrypoint when a container starts
+
+ 3. ls auth/htpasswd
+ 4. mkdir certs
+5. openssl req -newky rsa:4096..... get command from the file
+  - in the common name entere your public ip
+
+Using Docker Registries
+--- docker pull IMAGE:Tag
+--- docker login REGISTRY(public host name i.e. is a server).
+- If registry isn't specified, the default registry will be used that is Docker hub. so if used --- docker login then docker hub is used.
+--- docker search ubuntu
+- it only works on docker hub and not on private registry
+
+There are multiple ways to use a registry with a self-signed certificate
+- Turn off certificate verification(very inscure)
+--- sudo vi /etc/docker/daemon.json. And add a value to the json file {"insecure-registries" : ["host name registry "]}
+--- sudo systemctl restart docker
+--- docker loging hostNameRegistry(public host name)
+
+- provide the public certificate to the docker engine
+- we just have to put the copy of the certificate in the present server
+--- sudo mkdir -p /etc/docker/certs.d/hostnameOfTheRegistry
+--- sudo scp cloud_user@publicHostname:/home/cloud_user/registry/certs/domain.crt …… see the file
+- we are copying the certificate from the registry to the the new server
+--- docker login registry
+--- docker pull ubuntu
+--- docker tag ubuntu hostname/ubuntu
+--- docker push hostname/ubuntu
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
