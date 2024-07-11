@@ -1,0 +1,182 @@
+Autolock
+- docker swarm encrypts sensitive data for security reason such as
+-- Raft logs on swarm manager
+-- TLS communications between swarm nodes.
+
+- By default, Docker manages the key used for the encryption automatically. but they are stored unencrypted on the manager disks. so we need autolock for there encryption 
+
+- Autolock is a feature that automatically locks the swarm, allowing you to manage the encryption key yourself. However it requires you to unlock the swarm every time docker is restarted on one of your manager
+--- sudo systemctl restart docker -: in order for the lock key to be applied since it will kick in when docker start
+--- docker swarm init --autolock=true -: initialize autolock on the initialization of the swarm
+--- docker swarm update --autolock=true -: after the initialization of the swarm
+--- docker swarm update --autolock=false -: disable the autolock
+--- docker swarm unlock -: to unlock the swarm when starting docker.
+--- docker swarm unlock-key -: to get the unlock key. but you have to be logged in with the key first
+--- docker swarm unlock-key --rotate -: rotates the key and changes it
+
+High Availability in swarm
+- in order to be build a highly available and fault tolerant swarm, it is good to have multiple managers.
+- Docker use the Raft consensus algorithm to maintain a consistent cluster state across multiple managers.
+- More managers node means better fault tolerance. However, there can be a decrease in a performances as the number of managers grow, since more manager means more traffic as managers agrees to update in the cluster state.
+
+Quorum
+- A Quorum is the majority(more than half) of the managers in a swarm. For example, for a swarm with 5 managers, the quorum is 3. if we have 4 managers then it is still 3 since it must be more than half. for 3 it is 2
+- A quorum must be maintained in order to make changes to the cluster state. if a quorum is not available, nodes cannot be added or removed, new tasks cannot be added, and existing tasks cannot be changed or moved.
+- Since a quorum requires more than half of the manager nodes it is recommended to have an odd number of managers
+
+- in a swarm of five nodes, if there become two groups. one with two nodes that can communicate with one another and another group with three nodes that can communicate with one another. so the one with the three nodes will have the quorum. We won't be able to do updates or any change on the group with two nodes
+
+Availability zones
+- Docker recommends that you distribute you manager nodes across at least 3 availability zones. i.e. three separate locations. for ex. 3 managers nodes then 1-1-1 in each availability zone if 5 then 2-2-1, 7 then 3-2-2, 9 then 3-3-3
+
+Services
+- It is used to run an application on a docker swarm. It specifies a set of one or more replica tasks. These tasks will be distributed automatically across the nodes in the cluster and executes as containers.
+- The exposed port will be balanced across all the nodes. that is all the nodes are exposed at 9001:80, we can use
+--- curl localhost:9001 this will hit one of the nodes.
+
+--- docker service create --replicas 3 --name nginxservice -p 8080:8080(pusblished_port:service_port) nginx
+
+Templets
+- they can be used to give dynamic values to some flags with docker service create
+ . --hostname
+ . -- mount
+ . -- env
+
+- when we have multiple node we might not be able to know on which node is something performed. so we add --env NODE_Hostname to get the node it is running on
+--- docker service create --name node-hostname --env NODE_HOSTNAME="{{.Node.Hostname}}" nginx
+
+--- docker exec CONTAINER_ID printenv
+- this will display the NODE_HOSTNAME
+
+--- docker service ls
+--- docker service ps SERVICE
+--- docker service inspect SERVICE
+--- docker service inspect --pretty SERVICE
+--- docker service update [options] service
+--- docker service update --replicas 2 service
+--- docker service rm service
+
+
+Replicated vs global services
+- Replicated services run the requested number of replicas tasks across the swarm cluster.
+- Global service run one task on each node in the cluster
+- This means that if you have three nodes then the task will be run on all the nodes. if you add a new node and that task going to be added to the new node. Mostly used for global things that should run on all nodes like antivirus. so when new node is added that antivirus will be added automatically. 
+--- docker service create --mode global nginx
+
+Scaling services
+- there are two ways that is --replicas and scale
+--- docker service scale nginx=4
+
+Docker inspect
+- It allows to get information about docker objects such as containers, images, services, etc.
+--- docker inspect OBJECT_ID
+
+- if you know what the object is, i.e. if it is container or service or image
+--- docker container/service/image inspect name/id
+--- docker inspect --pretty OBJECT_ID to get it in to pretty format
+N.B  --pretty don't work with containers
+
+--- docker service inspect --format='{{.ID}}' nginx -: it gets us only the field that is needed.
+
+Docker Compose
+- it allows to run multi-container applications defined using a declarative format
+
+Installation of docker compose
+sudo curl -L "https://github.com/docker/compose/releases/download/1.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
+sudo chmod +x /usr/local/bin/docker-compose && \
+docker-compose version
+
+- docker compose uses YAML files
+- docker-compose.yml
+--- docker-compose up -d(detached mode)
+--- docker-compose ps
+--- docker-compose down
+
+Docker stacks
+- Services are capable of running a single replicated application across nodes in the cluster. but what if you need to deploy a more complex application consisting of multiple services.
+- A stack is a collection of interrelated services that can be deployed and scaled as a unit
+- docker stacks are similar to the multi container application created using docker compose. However, they can be scaled and executed across swarm just like normal swarm services
+- radial/busyboxplus:curl is removed so we use curlimages/curl
+simple-stack.yml
+version: '3'
+services:
+  web:
+    image: nginx
+    ports:
+    - "8080:80"
+    deploy:
+     replicas: 3
+  busybox:
+    image: curlimages/curl 
+    command: /bin/sh -c "while true; do echo $$MESSAGE; curl web:80; sleep 10; done" # connect to the service web with curl web:80 since they are in the same stack.
+    environment:
+    - MESSAGE=HELLO!
+
+--- docker stack deploy -c(allows to specify a file instead of using default) simple-stack.yml simple(the name of the stack)
+--- docker stack deploy -c simple-stack.yml simple
+--- docker stack ls
+--- docker stack ps simple
+--- docker stack services simple
+--- docker stack rm simple
+--- docker service logs simple_busybox(Service created by the stack file)
+
+
+Node labels
+- You can add pieces of metadata to your swarm nodes using node labels
+- You can then use these labels to determine nodes the task will run
+- for example. if you have multiple data centers or availability zones by using the labels you can on which data center or availability zone the task will run.
+
+in order to add label on a node
+--- docker node update --label-add LABEL=value NODE
+--- docker node update --label-add availability_zone=east NODE_NAME_1(worker node 1)
+--- docker node update --label-add availability_zone=west NODE_NAME_2 (worker node 2)
+--- docker node inspect --pretty NODE_NAME/ID -: to see labels on the nodes 
+
+Node Constraints
+-- node.labels.LABEL-THAT-WE-CREATED=VALUE-WE-GAVE. ex availability_zone==east
+-- it can be == , !=
+--- docker service create --name nginx-east --constraint node.labels.availability_zone==east --replicas 3 nginx
+
+Placement-pref
+- use --placement-pref with the spread strategy to spread tasks evenly across all values of a particular label
+--- docker service create --placement-pref spread=node.labels.LABEL IMAGE
+--- docker service create --name nginx-spread --placement-pref spread=node.label.availabilty_zone --replicas 2 ngnix
+
+for ex, if you have label called availiability_zone with three values(east, west, south), the tasks will be divided evenly amount the node groups with each of those three values, no matter how many nodes are in each group.
+so if you have 10 nodes on east and 3 nodes on west and you want replicas of 14 then 7 will be in east and 7 on west even though there are more nodes in the east. it spreads evenly on the availability zone. but if we don't use the --placement-pref then it will spread them equally on the available nodes and not according to the availability zone
+- even if the node doesn't have the availability zone label, it still going to be used because the null value for the label that is not present is a value on its own
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

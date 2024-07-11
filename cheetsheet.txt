@@ -1,4 +1,11 @@
+- radial/busyboxplus:curl is removed so we use curlimages/curl
 
+===================================================================================================
+sudo curl -L "https://github.com/docker/compose/releases/download/1.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
+sudo chmod +x /usr/local/bin/docker-compose && \
+docker-compose version
+
+=====================================================================================================
 sudo apt-get update && \
 sudo apt-get install -y ca-certificates curl && \
 sudo install -m 0755 -d /etc/apt/keyrings && \
@@ -9,6 +16,7 @@ sudo apt-get update && \
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
 sudo usermod -a -G docker cloud_user
 
+=====================================================================================================
 
 # Check if UFW is installed and active
 sudo ufw status

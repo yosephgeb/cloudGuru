@@ -63,7 +63,7 @@ Docker supports the ability to perform multi-stage builds. multi stage builds ha
 - you can also name your stage with FROM... AS, then refence the name with COPY --from
 
 # this will clock around 750MB when built and runed
-FROM golang:1.12.4 AS compiler
+FROM golang:1.12.4
 WORKDIR /helloworld
 COPY helloworld.go .
 RUN GOOS=Linux go build -a -installsuffix cgo -o helloworld .
@@ -71,7 +71,7 @@ CMD ["./helloworld"]
 
 
 # change it to multi stage build to make it smaller
-FROM golang:1.12.4
+FROM golang:1.12.4 AS compiler
 WORKDIR /helloworld
 COPY helloworld.go .
 RUN GOOS=Linux go build -a -installsuffix cgo -o helloworld .
@@ -86,19 +86,19 @@ CMD ["./helloworld"]
 Managing images
 --- docker image pull IMAGE:Tag
 --- docker image ls(list)
---- docker image ls -a(shows intermediate images that means when you pull image from docker hub that image may pull other images so those are itermediate images)
+--- docker image ls -a(shows intermediate images that means when you pull image from docker hub that image may pull other images so those are intermediate images)
 --- docker image inspect IMAGE
 --- docker image inspect IMAGE --format "{{.FIELD-YOU_WANT}} {{".ANOTHER_FIELD"}}"
 --- docker image rm IMAGE
 --- docker rmi IMAGE
 --- docker image rm -f IMAGE_ID
 --- docker rmi -f IMAGE_ID (rmi is without the image short for image rm)
--- -f doesnt necesserly delete the image when it is being used by container it just remove the tag. then it becomes a dangling image I.E without tag or repository
+-- -f doesn't necessarily delete the image when it is being used by container it just remove the tag. then it becomes a dangling image I.E without tag or repository
 --- docker image prune -: removes all images that are dangling
 
 Flattening an image
 - sometimes, images with fewer layers can perform better. in a few cases you may want to take an image with many layers and flatten them into a single layer.
-- docker does not provide an official method for doing this, but one can accomlish it by doing the following.
+- docker does not provide an official method for doing this, but one can accomplish it by doing the following.
  1. Run a container from the image
     --- docker run -d --name flat_container .(dockerfile)
  2. Export the container to an archive using docker export 
