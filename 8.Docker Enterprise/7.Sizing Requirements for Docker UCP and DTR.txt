@@ -1,0 +1,60 @@
+In this lesson,
+we're going to be talking about sizing requirements
+for Docker, UCP, and DTR.
+This is just some basic information
+that you might need to be familiar with
+for the Docker Certified Associate.
+So when it comes to Docker,
+ultimately there really aren't specific sizing requirements.
+It really depends on the workloads
+that you're going to be running.
+So when it comes to sizing Docker,
+what you really just need to be aware of
+is that you're going to need enough resources
+to run the actual container workloads
+that you're planning on running in Docker,
+and that's really what's going to determine
+the sizing requirements for Docker itself.
+However, Universal Control Plane and Docker Trusted Registry
+do have some specific system requirements.
+You just need to be generally aware of these,
+and when we're talking about Universal Control Plane,
+we have a minimum of 8 GB memory
+and 2 CPUs for manager nodes.
+However, 16 GB and 4 CPUs are recommended.
+So if you're just doing a simple cluster
+for development purposes,
+8 GB of memory and 2 CPUs,
+but for most production applications,
+you probably need at least 16 GB of memory
+and 4 CPUs.
+Again, that is specifically for the manager nodes.
+The worker nodes have fewer requirements.
+They just require at least 4 GB of memory
+and the documentation doesn't specify a number of CPUs
+for worker nodes,
+so I'm assuming that we need at least 1 CPU.
+Of course, you need at least 1 CPU
+in order to do anything.
+So the requirements for the worker nodes
+are significantly less than the requirements
+for the manager nodes in Universal Control Plane.
+In Docker Trusted Registry,
+we require a minimum of 16 GB of memory, 2 CPUs,
+and 10 gigabytes of disk space,
+and that makes sense
+because Docker Trusted Registry is managing disk images.
+You're going to need a significant amount of disk space
+in order to manage and store those images.
+However, the recommended settings
+for Docker Trusted Registry are again 16 GB of memory,
+but double the number of minimum CPUs,
+at least 4 CPUs recommended,
+and 25 to 100 GB of disk space.
+So those are the system requirements
+for Docker, UCP, and DTR.
+You can find more information
+about those in the documentation,
+but you might just need to have some general awareness
+of those requirements for the DCA.
+That's all for this lesson. I'll see you in the next one.

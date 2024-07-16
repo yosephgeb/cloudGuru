@@ -1,0 +1,188 @@
+In this lesson, we're going to be
+installing and configuring Docker Trusted Registry and
+luckily we can do that fairly easily just
+using Mirantis Launchpad.
+So we've already used Launchpad to set up UCP
+and we created a UCP manager and a worker
+and we're going to be using it now to set up DTR.
+Now, this process is made a little more complicated
+by the fact that we're going to need to
+create our own self-signed certificate for DTR.
+DTR can create its own self-signed certificate by itself
+but I've never been able to get those certificates to work
+with Chrome so that I can actually access the DTR interface.
+So instead of dealing with that, I'm just going to go ahead
+and create my own self-signed certificate,
+and if you want to follow along with this process,
+you can find the commands that I'm going to be using
+in the lesson reference,
+so make sure you look for that.
+First, I'm going to create a certificate authority.
+So I'm just going to create
+a certificate authority key called ca.key.
+I am logged in to my UCP manager server here.
+So even though we're setting up DTR, I'm not logged
+into that server. We're going to be using Launchpad,
+so we don't need to log into the actual server.
+Launchpad is going to be doing that for us
+and we can do it all right here from the UCP manager.
+So I've created my ca.key,
+and now I can create my CA certificate.
+Here's my subject.
+My OU is just dtr and my common name is just
+DTR CA, so just something simple there,
+and I did get a little bit
+of a complaint from the command line here.
+If you get that, don't worry about it.
+You can just ignore those messages.
+Now I have my CA certificate and key.
+So with my certificate authority in hand,
+I'm ready to go ahead and create the server certificates
+for Docker Trusted Registry.
+So I'll create a dtr.key.
+That will be my private key for my DTR server certificate,
+and then I'll create my certificate signing request.
+So I'm just going to create a dtr.csr,
+or a certificate signing request,
+and here's my subject.
+I just picked an organizational unit
+of dtr and a common name of system:dtr.
+So now I have my certificate signing request.
+Next, I'm going to create a file here called extfile.cnf.
+This is just going to be a temporary configuration file
+that will contain my certificate extension data.
+So I'm just going to paste in the contents of that file.
+I'm setting my key usage here
+and my basic constraints and my extended key usage.
+All these settings are important just to
+get this self-signed certificate
+to work with my browser, which is Google Chrome.
+Now here at the bottom, I have my subject alternative name
+and it's very important
+that the contents of this field are correct.
+So, first I'm going to enter DNS:
+and then the server hostname of my DTR server.
+So I'm just going to delete that placeholder there.
+So it's just going to be DNS: and then I'm going to go
+into cloud playground and select the first public hostname
+of that third server, which I'm using as my DTR server,
+and I'll just paste that in here.
+So here is the hostname for mine.
+Of course yours is going to be different
+and you're going to need to paste that in as well.
+Then I'm going to come here after IP:
+and I'm going to delete that placeholder.
+This one is going to be the DTR server private IP.
+Now I could include the public IP here
+but cloud playground servers can frequently
+change their public IP address.
+For example, if you stop and then start the server again,
+the public IP address is going to change.
+So there's really no point in including it
+in the certificate because I would then have to
+just recreate the certificate every time.
+So I'm just not going to include that.
+Of course, I have 127.0.0.1 as an IP here as well
+just that default local host IP address.
+So I'm going to go ahead and save and exit that file,
+and now that I have all of that in place
+I can go ahead and generate my public key.
+So I'm going to pass in my certificate
+signing request, my CA certificate
+and CA key, as well as my extfile.cnf.
+So now I have all of the files that I need.
+The ones I'm really interested
+in are ca.cert, ca.key, dtr.cert, and dtr.key.
+Now, because I ran this previous command as a sudo command,
+you may notice that dtr.cert is owned by root.
+So I'm going to go ahead and just fix that real quick
+and I'll just do a sudo chown cloud_user on dtr.cert
+just to make sure
+that that file is owned by cloud_user appropriately.
+Next, I'm going to go ahead and edit my cluster.yaml.
+We created that in a previous lesson
+and what we're going to be doing here is adding
+in our DTR server to this file.
+So the first thing I'm going to do is go ahead
+and add the host down here at the bottom,
+and I will just go after this last entry here
+and I'll just paste it in, just a simple host entry
+just like the other ones for my DTR server.
+The only difference is my role here is DTR,
+and then of course, I need to supply the private IP address
+of that server for the address field here.
+So I'll just go ahead and paste that in,
+and in addition to that,
+I also need to set up my DTR configuration.
+So I'm going to come up here under the spec
+and then right after the section on ucp,
+I'll just add in my configuration for dtr.
+So here's my dtr version.
+I'm going to use 2.8.2 and my installFlags.
+First one I'm going to use is --ucp-insecure-tls.
+Because my UCP certificate is self-signed,
+I need to add this flag just to make sure
+that DTR doesn't complain
+about that self-signed certificate and fail to install.
+Next, I need to supply my certificates.
+I need the --dtr-cert, --dtr-key,
+and the --dtr-ca as well,
+and I'm going to need the contents
+of those certificate files that I generated earlier.
+So I'm going to go ahead and save and exit this file,
+and I'm just going to cat dtr.crt,
+and what I need to do is copy the entire contents
+of this file, including where it says BEGIN CERTIFICATE
+and the END CERTIFICATE.
+So I need the entire contents of that file,
+and then I'm going to edit cluster.yaml again,
+and I will remove the placeholder that is here
+between the quotes.
+So I'm going to leave those double quotes
+and I'm just going to paste
+in all of this data in between those double quotes.
+Now it is important that all of this indentation is right,
+so I actually need to make sure
+that each one of these lines is indented,
+so that it's level
+with --dtr-cert here at the top.
+So I went ahead and fixed all the indentation.
+Of course, it's a lot easier to do that
+in an external text editor than to do it here in Vim
+so feel free to do that and then paste this in
+if you're so inclined,
+Next I need to do essentially
+the same thing for dtr.key, as well as ca.cert.
+So I went ahead and added those in.
+Again, I just went into an external text editor
+just to make it a little easier on myself
+but I have my dtr-key here and my CA certificate.
+So I'm going to go ahead and just save and exit this file
+and then we can set up DTR, just using launchpad apply.
+Now it is going to take a little while
+for this process to complete.
+So I'm going to go ahead and just skip to the end.
+So now my Docker Trusted Registry installation is complete
+and we should be able to access
+Docker Trusted Registry in a browser.
+So I've come over here to a web browser.
+I still have Universal Control Plane open.
+So I'm just going to open a new tab
+and access Docker Trusted Registry.
+I'm just going to go to https:// followed
+by the public IP address of my DTR server,
+and again, I need to tell Chrome to accept
+that self-signed certificate, and I'm now presented
+with the DTR login screen.
+So I should be able to log
+in here using the same credentials that I use for UCP.
+So I'm just going to use those admin credentials,
+and just like what happened when we logged into UCP,
+it's telling me that I need a license.
+I'm just going to click Skip for Now,
+and that's going to take me
+to the Docker Trusted Registry UI.
+So with that,
+we have successfully set up Docker Trusted Registry.
+That's all for this lesson.
+I'll see you in the next one.

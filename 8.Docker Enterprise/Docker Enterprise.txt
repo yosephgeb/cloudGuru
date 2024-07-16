@@ -1,0 +1,132 @@
+https://docs.mirantis.com/welcome/
+
+Docker Community Edition (CE)
+- Free and open source docker engine
+- all docker engine updates
+- docker swarm
+- orchestration
+- networking
+- security
+
+Docker enterprise Edition(EE)
+- Licensed version
+- comes with additional features
+- owned by Mirantis
+- all features of CE but with additional features like 
+-- Universal control plane (UCP)
+-- Docker trusted Registry (DTR)
+-- Vulnerability scanning. Automatically scan for vulnerability.
+-- Federated/Centralized application management
+
+Installing Docker EE
+- We need three server.
+-- 1 Large server for the UCP manager
+-- 1 Small UCP worker
+-- 1 Medium for Docker trusted registry (DTR)
+
+- install the Mirantis launchpad tool.
+- configure and create a cluster using configuration file and build the cluster using launchpad.
+- N:B requires a password less sudo so the file must be edited in all the server
+
+NB USE THE FILE NUMBER 1 FOR INSTALLATION GUIDE.
+
+Universal Control plane.
+- provides enterprise level cluster management.
+- It may look like a docker swarm with a web interface, but it provides additional features such as 
+-- 1. Organization and team management
+-- 2. Role-based access control
+-- 3. Orchestration with both Docker swarm and Kubernetes
+
+Universal Control plane Security
+- it provides a flexible model for controlling access to cluster resources and functionality
+- User is a person who is authenticated
+- Team is a group of users that share certain permissions
+- Organization is a group of teams that share certain permissions.
+- Service Account -: only in Kubernetes and it allows a container to access cluster resources.
+- Subject -: a user, team, organization or service account that we give access too.
+- Resource set(docker swarm)/namespace(Kubernetes) -: a docker swarm collection of cluster objects like containers services and nodes
+we can set up a resource set and we give access to it to subjects.
+
+- In docker swarm this resources are called collection and in Kubernetes namespaces
+
+Role
+
+- Role -: A permission that can be used to operate on objects in a collection.
+- Grant -: Provides a specific permission(role) to a subject, with regards to a resource set.
+- UCP also support LDAP integration, allowing you to manage users and teams using an LDAP-enabled user directory
+
+Docker Trusted Registry (DTR)
+- it is an enhanced, enterprise ready private Docker registry with additional features like
+-- A web UI, High availability through multiple registry nodes, catches images geographically close to users, Role based access control, Security vulnerability scanning for images.
+
+DTR high availability
+- Docker trusted registry supports high availability by allowing you to run multiple DTR replicas in a cluster.
+- A DTR cluster can tolerate failures as long as there is a quorum.
+- Quorum - More than half of the replicas are available. (more than half must be available so if there are 3 server, so only one can fail, if 4 the same only 1 because if two fail it is half not more than half, then we don't have quorum.
+
+DTR Cache
+- allows you to cache images geographically close to you users, allowing for faster download speeds.
+- Each cache pulls the image from the main DTR the first time a user requests the image from that cache.
+- users still authenticate using the main DTR URL and not the cache.
+- Users request images from the main DTR URL and DTR responds with redirect to the cache.
+- A user profile setting determines which cache a user will pull image from.
+- This means authentication and image pulling are completely transparent to users. they do not need to think about the cache.
+
+Installing DTR
+- we can install and configure using launchpad
+
+Sizing requirements for Docker UCP and DTR
+- Sizing requirements for docker depends on the work load that you want to run
+- UCP -: 8GB memory and 2 CPU's for manger nodes
+- Recommended 16GB memory and 4 CPUs for manager nodes.
+- Minimum 4GB memory for worker nodes 1Cpu
+
+-DCP
+- Minimum 16GB memory, 2 CPUs, 10GB disk
+- recommended 16GB memory, 5 CPUs, 25-100 GB disk
+
+UCP and DTR backups
+- need to be backed up in production in order to recover quickly in the event of data loss.
+The steps are
+1. Back up the Docker swarm. (This is the same for UCP swarm as it is for a regular swarm)
+2. Back up UCP
+3. Back up DTR images
+4. Back up DTR metadata
+
+Security Scanning with DTR
+- DTR has the ability to scan images for security vulnerabilities. 
+- it can be enabled via the DTR web UI
+- System -> security
+
+Immutable Tags
+- You can set immutability on a repository at any time. This prevents users from overwriting existing tags.
+
+Managing certificates using UCP & DTR
+- Your UCP infrastructure generates its own self signed certificates by default, but you can also supply your own certificates.
+- You can apply it to both UCP and DTR using the web interface
+- system -> General (scroll down to ) -> Domain & proxies -> TLS setting. You can paste the certificates there to apply using the web interface.
+
+- Client bundles -: provide a pre-packaged certificate configuration for clients.
+- Thy include client certificates which allow you to authenticate with UCP from the Docker command line.
+- in order to generate client bundles
+- main page admin -> my profile -> client bundles -> generate it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
