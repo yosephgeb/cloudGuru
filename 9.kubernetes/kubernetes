@@ -1,9 +1,177 @@
 Docker kubernetes Service
 - it allows us to orchestrate container workload in UCP using kubernetes. This combines the UCP interface with the flexibility of a kubernetes cluster.
 
-- Each UCP node has an orchestrator type either docke swarm, kubernetes or mixed(not recomended).
+- Each UCP node has an orchestrator type either docker swarm, kubernetes or mixed(not recommended).
 
 Kubernetes Namespaces.
 - Every kubernetes object exists in a namespace. Namespaces allow you to organize your object and keep them separate between different teams or applications.
 
-- when no namespace is specified in kubernetes, a namspace called default will be assumed.
+- when no namespace is specified in Kubernetes, a namespace called default will be assumed.
+
+Application Configuration
+- it is all about managing configuration data and passing that data to applications.
+- Kubernetes uses ConfigMaps and Secrets to store configuration data and pass it to containers
+
+ConfigMaps and Secrets
+- ConfigMaps allow you to store configuration data in a key/value format. This data can include simple values or larger blocks of data such as configuration files
+
+- Secrets are similar to config maps, but there data is encrypted at rest. Use secrets to store sensitive data, such as passwords or API tokens.
+
+apiVersion: v1
+kind: Secret (this can be anything like Pod, ConfigMaps and so on)
+metadata:
+  name: my-secret(what ever name we want to give)
+type: Opaque
+data:
+  username: username
+  password: password(will be encrypted when the kind is Secret)
+
+
+Using Config Data
+- configuration data stored in ConfigMaps or secrets can be passed to our container in two ways
+ 1. Environment variables -: configuration values can be passed in as environment variables that will be visible to the container process at runtime.
+ 2. Volume mounts -: configuration data can be mounted to the container file system where it will appear in the form of files.
+
+Kubernetes Network model
+- it is a set of standards that define how networking between pods behaves.
+- it defines how pods communicate with each other, regardless of which node they are running on.
+
+- Node 1 have 2 (pod with ip 1..., pod with ip 1...) the same for Node 2.
+- Each pod has its own Unique ip address within the cluster
+- ip address are unique to the entire cluster and not to the nodes. so the cluster might have multiple nodes and each nodes will have multiple pod. so each pod have a unique ip address.
+
+- Any pod can reach any other pod using that pod's ip address. This creates a virtual network that allows pods to easily communicate with each other, regardless of which node they are on.
+
+Kubernetes services
+- it allow us to expose an application that is running as a set of pods.
+- A service exposes a set of pods, load-balancing client traffic across them. These pods can then be dynamically created and destroyed without interruption to clients using the service.
+
+Services Types.
+- Each service has a type. The type determines the behaviour of the service and what it can be used for.
+ 1. ClusterIP(The default) -: Exposes to pods whin the cluster using a unique IP on the cluster's virtual network.
+ 2. NodePort -: Exposes the service outside the cluster on each kubernetes node, using a static port.
+
+NB ClusterIP is used with in the cluster and NodePort is when someone connect from outside the cluster
+
+ 3. LoadBalancer -: Expose the service externally using a cloud provider's load balancing functionality.
+ The same as NodePort but uses an external load balancer like AWS and so on
+
+ 4. ExternalName -: Expose an external resource inside the cluster network using DNS
+ if you have a resource outside the cluster that is running and you wan to represent it inside the cluster to be used by the pods.
+
+Cluster DNS
+- kubernetes includes a cluster DNS that helps container locate services using domain names.
+- pods whin the same namespace as a service can simple use the service name as domain name
+- pods in a different namespace must use the full domain name, which takes the form:
+--- my-svc.my-namespace.svc.cluster-domain.example
+
+Deployments
+- it allows to manage changes to a set of replica pods. They specify a desired state for a set of pods, and work to achieve and maintain that state, even if it is changed.
+- You can use deployments to do things like rolling updates and scaling.
+
+DaemonSets
+- They are tool that allows you to run a replica pod dynamically on each node in the cluster.
+- They will run a replicas on each node and create new replicas on new nodes as they are added.
+
+Scheduling
+- In Kubernetes, it refers to the process of selecting a node on which to ran a workload.
+- Scheduling is handled by the kubernetes scheduler.
+
+Node Taints
+- Node taints control which pods will be allowed to run on which nodes. Pods can have tolerations, which override taints for the specific pod.
+
+- Each taint has an effect
+- the NoExecute effect does two things to pods that don not have the appropriate toleration
+ 1. prevents new pods from being scheduled on the node.
+ 2. Evicts existing pods
+
+Resource Request
+- in the container spec, you can specify recourse requests for a resources such as memory and CPU.
+
+- The scheduler will avoid scheduling pods on nodes that don not have enough available resources to satisfy the requests
+
+probes
+- it allows the customization of how the kubernetes cluster determines the state of each container.
+ Liveness probes -: checks whether the container is healthy. it just checked if the container is running and nothing else.
+
+ Readiness probes -: check whether the container is ready to service user request.
+
+Volumes
+- Kubernetes uses volumes to provide simple storage to containers. Volume storage is more persistent than the container file system and can remain even if a container is restarted or re-created.
+- Volumes are part of the pod spec, and the same volume can be mounted to multiple containers.
+
+Volume Types
+- A volume type determines how the underlying storage is handled. There are may volume types available.
+
+Some volume types to know
+ - nfs -: shared network storage is provided using nfs.
+ - hostPath -_ files are stored in directory on the work node. The same files will not appear if the pods run on another node. Mostly used in testing.
+ - emptyDir -: Temporary storage that is deleted if the pod is deleted. Useful for sharing simple storage between containers in a pod.
+
+
+PersistentVolumes
+- Thy allow you to manage storage resources in an abstract fashion. They let you define a set of available storage resources as a kubernetes object, then later claim those storage resources for use in you pods.
+- It is abstract in a sense that you just define the storage object but still not used by anything
+
+PersistentVolumeClaim(PVC)
+- it defines a request for storage resources that can be mounted to a pod's container.
+- this is an actual instant so not an abstract
+
+Reclaim policy
+- A persistentVolume has a reclaim policy which determines what happens when the associated claims are deleted
+- There are 3 reclaim policy
+ 1. Retain - keeps the volume and its data and allows manual reclaiming. Admin is responsible for cleaning up existing data.
+ 2. Delete - Delete both the persistentVolume and it underlying storage infrastructure( such as cloud storge object)
+ 3. Recycle - Deletes the data contained in the volume and allows it to be used again.
+
+
+Expanding a PVC
+- You can expand a PVC by simply editing the object to have a larger size.
+- For this to work, the storage class must support volume expansion. if this is the case, the storage class's allowVolumExpansion field will be set to true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

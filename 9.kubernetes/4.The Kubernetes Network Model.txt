@@ -1,0 +1,49 @@
+In this lesson we're going to be talking
+about the Kubernetes network model.
+The Kubernetes network model is a set of standards
+that define how networking between pods behaves.
+We've talked about the Docker networking model
+earlier in this course
+and Kubernetes implements its own separate networking model.
+So it's going to be important for you to have a basic
+understanding of that model for the purposes
+of the Docker Certified Associate.
+So, let's talk about how the Kubernetes network model works.
+This model defines how Kubernetes pods communicate
+with each other
+regardless of which node they're running on.
+So I have a little diagram here where I have a couple
+of nodes each running 1 or more pods.
+So how are these pods going to communicate with each other
+whether they are on the same node
+or whether they are on different nodes?
+Well, the Kubernetes model assigns each pod
+its own unique IP address within the cluster.
+Now this is an important distinction to understand,
+the IP addresses are not unique to the node
+they are unique to the entire cluster.
+So regardless of which node a pod may be running on,
+it's never going to share the same IP address
+as any other pod in the cluster,
+and what that means is that any pod can communicate
+with any other pod simply using that pod's IP address.
+What this does is it creates a virtual network.
+So, this is what the Kubernetes network looks like.
+If you look at my diagram here,
+there really is nothing referencing the nodes
+that these pods may be running on.
+The pods might be running on separate nodes,
+but they are all part of a single virtual network,
+and the nodes are completely transparent to this network.
+One pod can simply reach out to any other pod
+on any other node simply by using the unique IP address
+of that other pod.
+So, that just gives you a basic idea
+of what the Kubernetes network model looks like.
+What you really need to know about that model
+is that it includes a virtual network that encompasses
+the entire cluster and pods can communicate with each other
+transparently using their unique IP addresses
+whether they are on the same node or on different nodes.
+That's all for this lesson.
+I'll see in the next one.
