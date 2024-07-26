@@ -17,6 +17,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 sudo usermod -a -G docker cloud_user
 
 =====================================================================================================
+when adding swarm worker nodes, the master/manager node should have its ports open
 
 # Check if UFW is installed and active
 sudo ufw status

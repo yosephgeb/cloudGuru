@@ -1,3 +1,4 @@
+SWMKEY-1-mHYj7xAQDMdcc3/TX1nVow4MCtAXf6LoYFGbUCeggac
 Autolock
 - docker swarm encrypts sensitive data for security reason such as
 -- Raft logs on swarm manager

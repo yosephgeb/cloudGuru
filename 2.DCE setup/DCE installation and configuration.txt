@@ -10,8 +10,10 @@ Selecting a Storage Driver
 --- docker info -: shows all about the configuration
 
 overriding the default storage driver
-1. set the --storage-driver flag when starting Docker(in your system unit file for example)
--- sudo vi /usr/lib/system/system/docker.service -: hear you add device-mapper manually.
+1. Set the storage driver explicitly by providing a flag to the Docker daemon:
+--- sudo vi /usr/lib/systemd/system/docker.service
+-   Edit the ExecStart line, adding the --storage-driver devicemapper flag:
+-   ExecStart=/usr/bin/dockerd --storage-driver devicemapper …
 - restart the daemon and docker
 
 2. set the "storage-driver" in /etc/docker/daemon.json
@@ -56,8 +58,8 @@ Swarm backup and restore
 To back up a swarm we have to do it from the manager nodes
 1. Stop the docker service  
 --- sudo systemctl stop docker
-2. back up all data in the directory /var/lib/docker/warm.
---- sudo tar -zvcf backup.tar.gz /var/lib/docker/warm
+2. back up all data in the directory /var/lib/docker/swarm.
+--- sudo tar -zvcf backup.tar.gz /var/lib/docker/swarm
 3. start the docker service
 --- sudo systemctl start docker
 
